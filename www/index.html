@@ -690,14 +690,36 @@
     const sound = new SoundEngine();
 
     let currentSpeechRate = 0.75;
-    function speakText(text) {
-      if (!('speechSynthesis' in window) || !text) return;
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'en-US';
-      utter.rate = currentSpeechRate;
-      utter.pitch = 1.1;
-      window.speechSynthesis.speak(utter);
+    async function speakText(text) {
+      if (!text) return;
+
+      // 1. 안드로이드 APK 환경: 네이티브 TTS 플러그인 직접 호출
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) {
+        try {
+          await window.Capacitor.Plugins.TextToSpeech.stop();
+          await window.Capacitor.Plugins.TextToSpeech.speak({
+            text: text,
+            lang: 'en-US',
+            rate: currentSpeechRate,
+            pitch: 1.1,
+            volume: 1.0,
+            category: 'ambient'
+          });
+          return;
+        } catch (e) {
+          console.error('Native TTS error:', e);
+        }
+      }
+    
+      // 2. 일반 PC/모바일 웹 브라우저 환경: 기존 웹 음성 합성 사용
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'en-US';
+        utter.rate = currentSpeechRate;
+        utter.pitch = 1.1;
+        window.speechSynthesis.speak(utter);
+      }
     }
 
     /* =====================================================================
