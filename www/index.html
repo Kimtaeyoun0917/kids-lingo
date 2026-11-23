@@ -809,7 +809,11 @@
       TTS.speak(text, lang || "en-US");
     }
 
-    /** 음성을 쓸 수 없는 기기에서만 안내 배너를 띄운다 */
+    /** 음성을 쓸 수 없는 기기에서만 안내 배너를 띄운다.
+        (안드로이드 TTS 엔진은 앱을 켠 뒤 잠깐 뒤에 준비되므로, 몇 번 더 확인한 다음에 띄운다) */
+    let voiceCheckTimer = null;
+    let voiceCheckTries = 0;
+
     function checkVoiceSupport() {
       const banner = document.getElementById('tts-banner');
       const textEl = document.getElementById('tts-banner-text');
@@ -818,15 +822,23 @@
 
       const status = TTS.status();          // APK: 네이티브 상태, 웹: null
       let message = "";
+      let retry = false;
+
       if (status) {
         if (!status.en) {
           message = "영어 음성 엔진이 아직 준비되지 않았어요. 기기의 ‘텍스트 음성 변환’ 설정에서 Google 음성 서비스를 설치하거나 영어 음성 데이터를 내려받으면 소리가 나요.";
+          if (voiceCheckTries < 4) {
+            voiceCheckTries++;
+            retry = true;
+            if (voiceCheckTimer) clearTimeout(voiceCheckTimer);
+            voiceCheckTimer = setTimeout(checkVoiceSupport, 700);
+          }
         }
       } else if (!("speechSynthesis" in window)) {
         message = "이 브라우저에서는 음성을 재생할 수 없어요. 휴대폰에 KidsLingo 앱을 설치하면 소리가 나요.";
       }
 
-      if (!message) {
+      if (!message || retry) {
         banner.classList.add('hidden');
         return;
       }
@@ -1426,6 +1438,15 @@
       AppState.init();
       renderMap();
       checkVoiceSupport();
+    });
+
+    // 음성 설정 화면에 다녀오면 다시 확인한다 (음성 데이터를 새로 받은 경우 배너를 지운다).
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        voiceCheckTries = 0;
+        if (voiceCheckTimer) clearTimeout(voiceCheckTimer);
+        checkVoiceSupport();
+      }
     });
   </script>
 </body>
