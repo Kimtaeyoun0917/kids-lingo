@@ -466,7 +466,7 @@
             type: "select",
             prompt: "소리를 잘 듣고 알맞은 대문자를 고르세요!",
             audioText: letter,
-            badgeText: "🔊 다시 듣기",
+            badgeText: "다시 듣기",
             options,
             answer: letter
           });
@@ -572,7 +572,7 @@
               type: "select",
               prompt: "원어민 발음을 듣고 알맞은 뜻을 고르세요!",
               audioText: item.en,
-              badgeText: `🔊 ${item.en}`,
+              badgeText: item.en,
               options,
               answer: item.en
             });
@@ -1263,7 +1263,8 @@
         if (typeof confetti === 'function') {
           confetti({ particleCount: 40, spread: 55, origin: { y: 0.85 } });
         }
-        sheet.className = "fixed inset-x-0 bottom-0 z-50 transform translate-y-0 transition-transform duration-200 border-t-2 border-emerald-300 bg-emerald-50 p-5 sm:p-6 text-emerald-900";
+        // ⚠ translate-y-0 을 함께 넣으면 translate-y-full 과 충돌해 시트가 닫히지 않는다.
+        sheet.className = "fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-200 border-t-2 border-emerald-300 bg-emerald-50 p-5 sm:p-6 text-emerald-900";
         iconBox.className = "w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black text-white shrink-0 bg-duo-green";
         iconBox.innerHTML = "✓";
         title.textContent = "정답입니다! 참 잘했어요!";
@@ -1275,7 +1276,7 @@
         AppState.user.hearts = Math.max(0, AppState.user.hearts - 1);
         AppState.save();
 
-        sheet.className = "fixed inset-x-0 bottom-0 z-50 transform translate-y-0 transition-transform duration-200 border-t-2 border-rose-300 bg-rose-50 p-5 sm:p-6 text-rose-900";
+        sheet.className = "fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-200 border-t-2 border-rose-300 bg-rose-50 p-5 sm:p-6 text-rose-900";
         iconBox.className = "w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black text-white shrink-0 bg-duo-red";
         iconBox.innerHTML = "✕";
         title.textContent = "아쉬워요! 정답을 확인해 봐요";
