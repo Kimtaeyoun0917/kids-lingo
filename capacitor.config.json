@@ -1,0 +1,6 @@
+{
+  "appId": "com.kidslingo.app",
+  "appName": "KidsLingo",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
