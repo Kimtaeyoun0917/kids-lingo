@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- index.html 의 듀오링고 초록(#58cc02) · 배경(#f7f9fa)과 맞춘다 -->
+    <color name="ic_launcher_background">#62C70F</color>
+    <color name="brand_green">#58CC02</color>
+    <color name="window_background">#F7F9FA</color>
+    <color name="nav_bar">#FFFFFF</color>
+</resources>

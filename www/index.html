@@ -12,12 +12,10 @@
   <meta name="theme-color" content="#58cc02">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦉</text></svg>">
 
-  <!-- 스타일 및 폰트 CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- 스타일·폰트·폭죽 효과: 모두 앱 안에 넣어 두어 인터넷이 없어도 그대로 보인다 -->
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <script src="vendor/tailwindcss.js"></script>
+  <script src="vendor/confetti.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -216,6 +214,18 @@
       <button id="close-heart-modal" class="w-full py-3 text-sm rounded-xl font-bold text-gray-500 hover:bg-gray-100">
         닫기
       </button>
+    </div>
+  </div>
+
+  <!-- 음성 엔진이 준비되지 않았을 때의 안내 -->
+  <div id="tts-banner" class="hidden fixed inset-x-0 bottom-0 z-40 mx-3 mb-3 max-w-md sm:mx-auto bg-amber-50 border-2 border-amber-300 rounded-2xl p-3 shadow-lg">
+    <div class="flex items-start gap-2">
+      <span class="text-xl leading-none">🔈</span>
+      <div class="flex-1">
+        <p id="tts-banner-text" class="text-sm font-bold text-amber-900 leading-snug"></p>
+        <button id="tts-banner-settings" class="hidden mt-2 px-3 py-1.5 rounded-xl bg-white border-2 border-amber-400 text-sm font-black text-amber-900 duo-btn-press">음성 설정 열기</button>
+      </div>
+      <button id="tts-banner-close" class="text-gray-500 text-xl font-black leading-none px-1">✕</button>
     </div>
   </div>
 
@@ -556,7 +566,7 @@
           if (idx % 2 === 0) {
             // 영어 소리/단어 -> 한글 뜻+그림 찾기
             const options = shuffleArray([item, ...distractors]).map(x => ({
-              id: x.en, text: `${x.emoji} ${x.ko}`
+              id: x.en, text: `${x.emoji} ${x.ko}`, audio: x.ko, lang: 'ko-KR'
             }));
             questions.push({
               type: "select",
@@ -576,6 +586,7 @@
               prompt: `'[ ${item.emoji} ${item.ko} ]'를 영어로 어떻게 말할까요?`,
               audioText: item.en,
               badgeText: `${item.emoji} ${item.ko}`,
+              koText: item.ko,
               options,
               answer: item.en
             });
@@ -587,7 +598,7 @@
           questions.push({
             type: "match",
             prompt: "영어 단어와 알맞은 그림·뜻을 연결하세요!",
-            pairs: four.map(x => ({ id: x.en, left: x.en, right: `${x.emoji} ${x.ko}`, audio: x.en }))
+            pairs: four.map(x => ({ id: x.en, left: x.en, right: `${x.emoji} ${x.ko}`, audio: x.en, rightAudio: x.ko, rightLang: 'ko-KR' }))
           });
         }
       }
@@ -606,6 +617,7 @@
             prompt: `알파벳 블록을 순서대로 눌러 영단어를 완성하세요!`,
             audioText: item.word.toLowerCase(),
             badgeText: `${item.emoji} ${item.ko}`,
+            koText: item.ko,
             tokens: shuffled,
             answer: letters
           });
@@ -624,6 +636,7 @@
             prompt: "단어 블록을 차례대로 눌러 영어 문장을 만드세요!",
             audioText: item.audio,
             badgeText: item.ko,
+            koText: item.ko,
             tokens: shuffled,
             answer: item.tokens
           });
@@ -689,37 +702,135 @@
     }
     const sound = new SoundEngine();
 
-    let currentSpeechRate = 0.75;
-    async function speakText(text) {
-      if (!text) return;
+    /* =====================================================================
+       3-1. 음성(TTS) 엔진
+       · 안드로이드 APK : MainActivity 가 넣어 주는 window.AndroidTTS (네이티브 TextToSpeech)
+       · PC·휴대폰 웹  : Web Speech API(speechSynthesis) 폴백
+       ===================================================================== */
+    const SPEED_CHOICES = [
+      { rate: 0.75, label: "0.75x" },
+      { rate: 1.0,  label: "1.0x"  },
+      { rate: 0.6,  label: "0.6x"  }
+    ];
+    let speedIndex = 0;
+    let currentSpeechRate = SPEED_CHOICES[speedIndex].rate;
 
-      // 1. 안드로이드 APK 환경: 네이티브 TTS 플러그인 직접 호출
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) {
+    const TTS = {
+      bridge: null,
+      bridgeChecked: false,
+
+      /* MainActivity 가 넣어 준 자바 객체를 한 번만 찾아 둔다 */
+      getBridge() {
+        if (!this.bridgeChecked) {
+          this.bridgeChecked = true;
+          const b = window.AndroidTTS;
+          if (b && typeof b.speak === 'function') this.bridge = b;
+        }
+        return this.bridge;
+      },
+
+      /** 네이티브 엔진 준비 상태 {en, ko, engine}. 웹 브라우저에서는 null */
+      status() {
+        const b = this.getBridge();
+        if (!b) return null;
         try {
-          await window.Capacitor.Plugins.TextToSpeech.stop();
-          await window.Capacitor.Plugins.TextToSpeech.speak({
-            text: text,
-            lang: 'en-US',
-            rate: currentSpeechRate,
-            pitch: 1.1,
-            volume: 1.0,
-            category: 'ambient'
+          const raw = String(b.status() || "");
+          const out = { en: false, ko: false, engine: "" };
+          raw.split(";").forEach(pair => {
+            const i = pair.indexOf("=");
+            if (i < 0) return;
+            const key = pair.slice(0, i);
+            const val = pair.slice(i + 1);
+            if (key === "en") out.en = (val === "1");
+            else if (key === "ko") out.ko = (val === "1");
+            else if (key === "engine") out.engine = val;
           });
-          return;
+          return out;
         } catch (e) {
-          console.error('Native TTS error:', e);
+          console.warn("TTS 상태 확인 실패", e);
+          return null;
+        }
+      },
+
+      /** lang: 'en-US' | 'ko-KR' — 소리가 났으면 true */
+      speak(text, lang, rate) {
+        const value = (text == null) ? "" : String(text).trim();
+        if (!value) return false;
+        const langTag = /^ko/i.test(lang || "") ? "ko-KR" : "en-US";
+        const speed = (typeof rate === "number" && rate > 0) ? rate : currentSpeechRate;
+
+        // 1) 안드로이드 네이티브 TTS
+        const bridge = this.getBridge();
+        if (bridge) {
+          try {
+            if (bridge.speak(value, langTag, speed)) return true;
+          } catch (e) {
+            console.warn("네이티브 TTS 호출 실패 — 웹 음성으로 대체", e);
+          }
+        }
+
+        // 2) 웹 브라우저 폴백
+        if ("speechSynthesis" in window) {
+          try {
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(value);
+            utter.lang = langTag;
+            utter.rate = speed;
+            utter.pitch = 1.05;
+            utter.volume = 1.0;
+            window.speechSynthesis.speak(utter);
+            return true;
+          } catch (e) {
+            console.warn("웹 음성 합성 실패", e);
+          }
+        }
+        return false;
+      },
+
+      stop() {
+        const bridge = this.getBridge();
+        if (bridge) { try { bridge.stop(); } catch (e) {} }
+        if ("speechSynthesis" in window) {
+          try { window.speechSynthesis.cancel(); } catch (e) {}
+        }
+      },
+
+      openSettings() {
+        const bridge = this.getBridge();
+        if (bridge && typeof bridge.openTtsSettings === "function") {
+          try { bridge.openTtsSettings(); } catch (e) {}
         }
       }
-    
-      // 2. 일반 PC/모바일 웹 브라우저 환경: 기존 웹 음성 합성 사용
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'en-US';
-        utter.rate = currentSpeechRate;
-        utter.pitch = 1.1;
-        window.speechSynthesis.speak(utter);
+    };
+
+    function speakText(text, lang) {
+      TTS.speak(text, lang || "en-US");
+    }
+
+    /** 음성을 쓸 수 없는 기기에서만 안내 배너를 띄운다 */
+    function checkVoiceSupport() {
+      const banner = document.getElementById('tts-banner');
+      const textEl = document.getElementById('tts-banner-text');
+      const settingsBtn = document.getElementById('tts-banner-settings');
+      if (!banner || !textEl) return;
+
+      const status = TTS.status();          // APK: 네이티브 상태, 웹: null
+      let message = "";
+      if (status) {
+        if (!status.en) {
+          message = "영어 음성 엔진이 아직 준비되지 않았어요. 기기의 ‘텍스트 음성 변환’ 설정에서 Google 음성 서비스를 설치하거나 영어 음성 데이터를 내려받으면 소리가 나요.";
+        }
+      } else if (!("speechSynthesis" in window)) {
+        message = "이 브라우저에서는 음성을 재생할 수 없어요. 휴대폰에 KidsLingo 앱을 설치하면 소리가 나요.";
       }
+
+      if (!message) {
+        banner.classList.add('hidden');
+        return;
+      }
+      textEl.textContent = message;
+      if (status && settingsBtn) settingsBtn.classList.remove('hidden');
+      banner.classList.remove('hidden');
     }
 
     /* =====================================================================
@@ -738,6 +849,9 @@
       currentQuestionIndex: 0,
       selectedAnswer: null,
       assembledTokens: [],
+      awaitingNext: false,     // 이미 판정해서 결과 시트를 보고 있는 중
+      pendingAdvance: false,   // 하트가 없어 다음 문제로 못 넘어간 상태
+      speakToken: 0,           // 문제를 넘기면 예약된 자동 발음을 버리기 위한 번호
       matchState: { selectedLeft: null, selectedRight: null, matchedIds: new Set() },
 
       init() {
@@ -819,7 +933,7 @@
        ===================================================================== */
     function startStage(stageId) {
       if (AppState.user.hearts <= 0) {
-        document.getElementById('heart-modal').classList.remove('hidden');
+        showHeartModal();
         return;
       }
 
@@ -846,7 +960,9 @@
 
       AppState.selectedAnswer = null;
       AppState.assembledTokens = [];
+      AppState.awaitingNext = false;
       AppState.matchState = { selectedLeft: null, selectedRight: null, matchedIds: new Set() };
+      const speakToken = ++AppState.speakToken;
 
       const bottomControl = document.getElementById('quiz-bottom-control');
       const contentArea = document.getElementById('quiz-content-area');
@@ -865,14 +981,27 @@
             <span class="text-2xl">🔊</span>
             <span class="text-xl font-black text-duo-blue">${q.badgeText}</span>
           </button>
+          ${q.koText ? `<div class="mt-2">
+            <button id="listen-ko-btn" class="inline-flex items-center gap-1.5 bg-white border-2 border-duo-gray px-4 py-2 rounded-2xl shadow-duo-card duo-btn-press">
+              <span class="text-lg">🗣️</span>
+              <span class="text-base font-black text-duo-text">뜻을 한국어로 듣기</span>
+            </button>
+          </div>` : ''}
         `;
         contentArea.appendChild(promptBox);
 
-        setTimeout(() => speakText(q.audioText), 200);
+        setTimeout(() => { if (speakToken === AppState.speakToken) speakText(q.audioText, 'en-US'); }, 220);
         promptBox.querySelector('#listen-prompt-btn').addEventListener('click', () => {
           sound.playPop();
-          speakText(q.audioText);
+          speakText(q.audioText, 'en-US');
         });
+        const koBtn = promptBox.querySelector('#listen-ko-btn');
+        if (koBtn) {
+          koBtn.addEventListener('click', () => {
+            sound.playPop();
+            speakText(q.koText, 'ko-KR');
+          });
+        }
 
         const grid = document.createElement('div');
         grid.className = "grid grid-cols-2 gap-3 w-full";
@@ -883,7 +1012,7 @@
           optBtn.textContent = opt.text;
           optBtn.addEventListener('click', () => {
             sound.playPop();
-            if (opt.audio) speakText(opt.audio);
+            if (opt.audio) speakText(opt.audio, opt.lang || 'en-US');
             document.querySelectorAll('.option-card').forEach(b => {
               b.classList.remove('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
             });
@@ -921,7 +1050,7 @@
           btn.className = "match-left-btn bg-white border-2 border-duo-gray rounded-2xl py-4 px-3 text-lg sm:text-xl font-black text-duo-text shadow-duo-card duo-btn-press";
           btn.textContent = item.left;
           btn.dataset.id = item.id;
-          btn.addEventListener('click', () => handleMatchClick('left', item.id, item.audio, btn));
+          btn.addEventListener('click', () => handleMatchClick('left', item, btn));
           leftCol.appendChild(btn);
         });
 
@@ -930,7 +1059,7 @@
           btn.className = "match-right-btn bg-white border-2 border-duo-gray rounded-2xl py-4 px-3 text-lg sm:text-xl font-black text-duo-text shadow-duo-card duo-btn-press";
           btn.textContent = item.right;
           btn.dataset.id = item.id;
-          btn.addEventListener('click', () => handleMatchClick('right', item.id, null, btn));
+          btn.addEventListener('click', () => handleMatchClick('right', item, btn));
           rightCol.appendChild(btn);
         });
 
@@ -952,14 +1081,27 @@
             <span class="text-2xl">🔊</span>
             <span class="text-xl font-black text-duo-blue">${q.badgeText}</span>
           </button>
+          ${q.koText ? `<div class="mt-2">
+            <button id="listen-ko-btn" class="inline-flex items-center gap-1.5 bg-white border-2 border-duo-gray px-4 py-2 rounded-2xl shadow-duo-card duo-btn-press">
+              <span class="text-lg">🗣️</span>
+              <span class="text-base font-black text-duo-text">뜻을 한국어로 듣기</span>
+            </button>
+          </div>` : ''}
         `;
         contentArea.appendChild(promptBox);
 
-        setTimeout(() => speakText(q.audioText), 200);
+        setTimeout(() => { if (speakToken === AppState.speakToken) speakText(q.audioText, 'en-US'); }, 220);
         promptBox.querySelector('#listen-prompt-btn').addEventListener('click', () => {
           sound.playPop();
-          speakText(q.audioText);
+          speakText(q.audioText, 'en-US');
         });
+        const koBtn = promptBox.querySelector('#listen-ko-btn');
+        if (koBtn) {
+          koBtn.addEventListener('click', () => {
+            sound.playPop();
+            speakText(q.koText, 'ko-KR');
+          });
+        }
 
         const slotBox = document.createElement('div');
         slotBox.className = "min-h-[68px] bg-white border-2 border-dashed border-gray-300 rounded-2xl mb-6 flex flex-wrap gap-2 items-center justify-center p-3";
@@ -978,7 +1120,7 @@
 
           tokBtn.addEventListener('click', () => {
             sound.playPop();
-            speakText(tok.replace(/[.!,]/g, ''));
+            speakText(tok.replace(/[.!,]/g, ''), 'en-US');
             tokBtn.classList.add('opacity-25', 'pointer-events-none');
             AppState.assembledTokens.push({ text: tok, originId: tokIdx });
             renderAssembledTokens();
@@ -990,10 +1132,14 @@
     }
 
     /* 짝맞추기 선택 판정 */
-    function handleMatchClick(side, id, audio, btnEl) {
-      if (AppState.matchState.matchedIds.has(id)) return;
+    function handleMatchClick(side, item, btnEl) {
+      const id = item.id;
+      if (!id || AppState.matchState.matchedIds.has(id)) return;
       sound.playPop();
-      if (audio) speakText(audio);
+      // 왼쪽은 영어, 오른쪽은 카드에 적힌 언어(영어 단어 / 한국어 뜻)를 읽어 준다.
+      const audioText = (side === 'right') ? (item.rightAudio || item.audio) : (item.leftAudio || item.audio);
+      const audioLang = (side === 'right') ? (item.rightLang || 'en-US') : (item.leftLang || 'en-US');
+      if (audioText) speakText(audioText, audioLang);
 
       if (side === 'left') {
         document.querySelectorAll('.match-left-btn').forEach(b => {
@@ -1025,9 +1171,12 @@
           AppState.matchState.selectedLeft = null;
           AppState.matchState.selectedRight = null;
 
-          // 4쌍 모두 맞췄을 때
-          if (AppState.matchState.matchedIds.size === 4) {
-            setTimeout(() => showResultSheet(true, { answer: "4쌍 모두 연결 성공!" }), 250);
+          // 짝을 모두 맞췄을 때
+          const matchQ = AppState.activeQuestions[AppState.currentQuestionIndex];
+          const totalPairs = (matchQ && matchQ.pairs) ? matchQ.pairs.length : 4;
+          if (AppState.matchState.matchedIds.size === totalPairs) {
+            AppState.awaitingNext = true;
+            setTimeout(() => showResultSheet(true, { answer: "모든 짝을 연결했어요!" }), 250);
           }
         } else {
           // 짝 불일치 시 흔들림 피드백
@@ -1086,6 +1235,7 @@
        7. 정답 판정 및 듀오링고 하단 바텀시트
        ===================================================================== */
     document.getElementById('submit-answer-btn').addEventListener('click', () => {
+      if (AppState.awaitingNext) return;   // 이미 판정한 문제는 두 번 세지 않는다
       const q = AppState.activeQuestions[AppState.currentQuestionIndex];
       let isCorrect = false;
 
@@ -1095,10 +1245,13 @@
         const joiner = AppState.currentStageId === 9 ? '' : ' ';
         isCorrect = (AppState.assembledTokens.map(t => t.text).join(joiner) === q.answer.join(joiner));
       }
+      AppState.awaitingNext = true;
       showResultSheet(isCorrect, q);
     });
 
     function showResultSheet(isCorrect, question) {
+      const totalQ = AppState.activeQuestions.length || 1;
+      document.getElementById('progress-bar').style.width = `${Math.round(((AppState.currentQuestionIndex + 1) / totalQ) * 100)}%`;
       const sheet = document.getElementById('result-sheet');
       const iconBox = document.getElementById('result-icon-box');
       const title = document.getElementById('result-title');
@@ -1136,18 +1289,66 @@
 
       nextBtn.onclick = () => {
         sheet.classList.add('translate-y-full');
+        AppState.awaitingNext = false;
         if (AppState.user.hearts <= 0) {
-          document.getElementById('heart-modal').classList.remove('hidden');
+          // 하트를 채운 뒤 이어서 갈 수 있도록 진행 의사를 남겨 둔다.
+          AppState.pendingAdvance = true;
+          showHeartModal();
           return;
         }
-        if (AppState.currentQuestionIndex + 1 < AppState.activeQuestions.length) {
-          AppState.currentQuestionIndex++;
-          loadQuestion();
-        } else {
-          finishStage();
-        }
+        advanceToNextQuestion();
       };
     }
+
+    /* 다음 문제로 넘어가거나 스테이지를 마무리한다 */
+    function advanceToNextQuestion() {
+      AppState.pendingAdvance = false;
+      if (AppState.currentQuestionIndex + 1 < AppState.activeQuestions.length) {
+        AppState.currentQuestionIndex++;
+        loadQuestion();
+      } else {
+        finishStage();
+      }
+    }
+
+    function showHeartModal() {
+      document.getElementById('heart-modal').classList.remove('hidden');
+    }
+
+    /* 홈(맵)으로 돌아가기 — 진행 중이던 문제·시트·모달을 모두 정리한다 */
+    function goHome() {
+      TTS.stop();
+      AppState.awaitingNext = false;
+      AppState.pendingAdvance = false;
+      AppState.speakToken++;
+      document.getElementById('result-sheet').classList.add('translate-y-full');
+      document.getElementById('heart-modal').classList.add('hidden');
+      document.getElementById('quiz-view').classList.add('hidden');
+      document.getElementById('complete-view').classList.add('hidden');
+      document.getElementById('map-view').classList.remove('hidden');
+      renderMap();
+    }
+
+    /* 안드로이드 하드웨어 뒤로가기 버튼 */
+    window.handleAndroidBack = function () {
+      const heartModal = document.getElementById('heart-modal');
+      if (heartModal && !heartModal.classList.contains('hidden')) {
+        heartModal.classList.add('hidden');
+        AppState.pendingAdvance = false;
+        return 'closed';
+      }
+      const banner = document.getElementById('tts-banner');
+      if (banner && !banner.classList.contains('hidden')) {
+        banner.classList.add('hidden');
+        return 'closed';
+      }
+      const quiz = document.getElementById('quiz-view');
+      if (quiz && !quiz.classList.contains('hidden')) {
+        goHome();
+        return 'home';
+      }
+      return 'exit';
+    };
 
     function finishStage() {
       const stageId = AppState.currentStageId;
@@ -1158,6 +1359,7 @@
       AppState.user.gems += 15;
       AppState.save();
 
+      document.getElementById('progress-bar').style.width = '100%';
       document.getElementById('stage-clear-count').textContent = `${AppState.user.clearCounts[stageId]}회 달성`;
       document.getElementById('quiz-view').classList.add('hidden');
       document.getElementById('complete-view').classList.remove('hidden');
@@ -1182,49 +1384,45 @@
       startStage(AppState.currentStageId);
     });
 
-    document.getElementById('header-home-btn').addEventListener('click', () => {
-      document.getElementById('result-sheet').classList.add('translate-y-full');
-      document.getElementById('quiz-view').classList.add('hidden');
-      document.getElementById('complete-view').classList.add('hidden');
-      document.getElementById('map-view').classList.remove('hidden');
-      renderMap();
-    });
-
-    document.getElementById('quiz-exit-btn').addEventListener('click', () => {
-      document.getElementById('result-sheet').classList.add('translate-y-full');
-      document.getElementById('quiz-view').classList.add('hidden');
-      document.getElementById('map-view').classList.remove('hidden');
-      renderMap();
-    });
+    document.getElementById('header-home-btn').addEventListener('click', goHome);
+    document.getElementById('quiz-exit-btn').addEventListener('click', goHome);
 
     document.getElementById('tts-speed-toggle').addEventListener('click', () => {
       sound.playPop();
-      const speedText = document.getElementById('speed-text');
-      if (currentSpeechRate === 0.75) {
-        currentSpeechRate = 1.0;
-        speedText.textContent = "1.0x";
-      } else {
-        currentSpeechRate = 0.75;
-        speedText.textContent = "0.75x";
-      }
+      speedIndex = (speedIndex + 1) % SPEED_CHOICES.length;
+      currentSpeechRate = SPEED_CHOICES[speedIndex].rate;
+      document.getElementById('speed-text').textContent = SPEED_CHOICES[speedIndex].label;
     });
 
-    document.getElementById('heart-pill').addEventListener('click', () => {
-      document.getElementById('heart-modal').classList.remove('hidden');
-    });
+    document.getElementById('heart-pill').addEventListener('click', showHeartModal);
     document.getElementById('close-heart-modal').addEventListener('click', () => {
       document.getElementById('heart-modal').classList.add('hidden');
+      AppState.pendingAdvance = false;
     });
     document.getElementById('refill-hearts-btn').addEventListener('click', () => {
       sound.playCorrect();
       AppState.user.hearts = 5;
       AppState.save();
       document.getElementById('heart-modal').classList.add('hidden');
+      // 하트가 없어 멈춰 있던 진행을 이어 간다.
+      if (AppState.pendingAdvance) advanceToNextQuestion();
+    });
+
+    document.getElementById('tts-banner-close').addEventListener('click', () => {
+      document.getElementById('tts-banner').classList.add('hidden');
+    });
+    document.getElementById('tts-banner-settings').addEventListener('click', () => {
+      TTS.openSettings();
+    });
+
+    window.addEventListener('error', (event) => {
+      console.error('KidsLingo 오류:', event.message || event.error, event.filename, event.lineno);
     });
 
     window.addEventListener('DOMContentLoaded', () => {
       AppState.init();
       renderMap();
+      checkVoiceSupport();
     });
   </script>
 </body>
