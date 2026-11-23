@@ -1,1 +1,1209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>KidsLingo - 초등 1학년 신나는 영어 탐험</title>
+  
+  <!-- 모바일 웹앱 (PWA 홈 화면 바로가기 지원) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#58cc02">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦉</text></svg>">
 
+  <!-- 스타일 및 폰트 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            jua: ['Jua', 'sans-serif'],
+            nunito: ['Nunito', 'sans-serif'],
+          },
+          colors: {
+            duo: {
+              green: '#58cc02',
+              greenDark: '#46a302',
+              blue: '#1cb0f6',
+              blueDark: '#1899d6',
+              yellow: '#ffc800',
+              yellowDark: '#e5a500',
+              red: '#ff4b4b',
+              redDark: '#ea2b2b',
+              purple: '#ce82ff',
+              purpleDark: '#a55eea',
+              gray: '#e5e5e5',
+              text: '#4b4b4b',
+            }
+          },
+          boxShadow: {
+            'duo-green': '0 5px 0 #46a302',
+            'duo-blue': '0 5px 0 #1899d6',
+            'duo-yellow': '0 5px 0 #e5a500',
+            'duo-red': '0 5px 0 #ea2b2b',
+            'duo-gray': '0 5px 0 #afafaf',
+            'duo-card': '0 4px 0 #e5e5e5',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Jua', 'Nunito', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      background-color: #f7f9fa;
+    }
+    .duo-btn-press {
+      transition: all 0.08s ease;
+    }
+    .duo-btn-press:active:not(:disabled) {
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) !important;
+    }
+    @keyframes float-badge {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-7px); }
+    }
+    .floating-badge {
+      animation: float-badge 1.8s infinite ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+    .shake-wrong {
+      animation: shake 0.25s ease-in-out;
+    }
+  </style>
+</head>
+<body class="text-duo-text flex flex-col min-h-screen">
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="sticky top-0 z-40 bg-white border-b-2 border-duo-gray px-4 py-2.5 sm:py-3 shadow-sm">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div id="header-home-btn" class="flex items-center gap-2 cursor-pointer">
+        <span class="text-3xl">🦉</span>
+        <span class="text-2xl font-black text-duo-green tracking-wide">KidsLingo</span>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3 text-base sm:text-lg">
+        <div class="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-2xl border border-amber-200">
+          <span>🔥</span>
+          <span id="streak-count" class="font-bold text-amber-600">1</span>
+        </div>
+        <div class="flex items-center gap-1 bg-sky-50 px-2.5 py-1 rounded-2xl border border-sky-200">
+          <span>💎</span>
+          <span id="gem-count" class="font-bold text-duo-blue">50</span>
+        </div>
+        <div id="heart-pill" class="flex items-center gap-1 bg-rose-50 px-2.5 py-1 rounded-2xl border border-rose-200 cursor-pointer">
+          <span>❤️</span>
+          <span id="heart-count" class="font-bold text-duo-red">5</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 뷰 컨테이너 -->
+  <main class="flex-1 w-full max-w-md mx-auto px-4 pb-20 pt-4 flex flex-col justify-start relative">
+    
+    <!-- 1. 징검다리 학습 맵 (홈 화면) -->
+    <section id="map-view" class="w-full flex flex-col items-center py-2 relative">
+      <div class="w-full bg-gradient-to-r from-emerald-500 to-duo-green text-white p-4 rounded-3xl mb-6 shadow-duo-green flex items-center justify-between">
+        <div>
+          <span class="bg-white/20 text-xs px-2.5 py-1 rounded-full font-bold tracking-wider">초등 1학년 무작위 탐험</span>
+          <h2 class="text-2xl font-bold mt-1">알파벳부터 첫 문장까지</h2>
+          <p class="text-emerald-100 text-sm mt-0.5">할 때마다 새로운 문제가 나와요!</p>
+        </div>
+        <div class="text-4xl pr-1">🎲</div>
+      </div>
+
+      <!-- 징검다리 노드 렌더링 영역 -->
+      <div id="path-nodes-container" class="w-full flex flex-col items-center gap-6 sm:gap-7 relative my-2"></div>
+    </section>
+
+    <!-- 2. 인터랙티브 퀴즈 학습 화면 -->
+    <section id="quiz-view" class="w-full flex-col hidden h-full justify-between flex-1">
+      <div>
+        <!-- 상단 진행바 및 속도 토글 -->
+        <div class="flex items-center gap-3 pt-1 pb-3">
+          <button id="quiz-exit-btn" class="text-gray-400 hover:text-duo-text text-2xl font-black p-1">✕</button>
+          <div class="flex-1 bg-duo-gray h-4 rounded-full overflow-hidden p-0.5">
+            <div id="progress-bar" class="bg-duo-green h-full rounded-full transition-all duration-300 w-0"></div>
+          </div>
+          <span id="question-counter" class="text-xs font-black text-gray-500 whitespace-nowrap">1 / 6</span>
+          <button id="tts-speed-toggle" class="bg-white border-2 border-duo-gray px-2.5 py-1 rounded-xl text-xs font-bold text-duo-text flex items-center gap-1 shadow-sm">
+            <span>🐢</span><span id="speed-text">0.75x</span>
+          </button>
+        </div>
+
+        <div id="quiz-content-area" class="mt-2 min-h-[340px] flex flex-col justify-center"></div>
+      </div>
+
+      <!-- 하단 정답 확인 버튼 -->
+      <div id="quiz-bottom-control" class="pt-4 pb-6 w-full">
+        <button id="submit-answer-btn" disabled class="w-full py-4 text-xl rounded-2xl font-black tracking-wider bg-duo-gray text-gray-400 cursor-not-allowed uppercase transition-all">
+          정답 확인하기
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. 스테이지 완료 축하 화면 -->
+    <section id="complete-view" class="w-full flex-col items-center justify-center hidden text-center py-10 flex-1">
+      <div class="text-7xl mb-4 floating-badge">🏆</div>
+      <h2 class="text-3xl font-black text-duo-yellow mb-2">스테이지 클리어!</h2>
+      <p id="complete-desc" class="text-gray-600 text-lg mb-6">새로운 문제도 척척 풀어냈어요!</p>
+      
+      <div class="grid grid-cols-2 gap-4 w-full max-w-xs mb-8">
+        <div class="bg-white p-4 rounded-2xl border-2 border-duo-gray shadow-duo-card">
+          <div class="text-sm text-gray-500 font-bold">획득 보석</div>
+          <div class="text-2xl font-black text-duo-blue mt-1">💎 +15</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border-2 border-duo-gray shadow-duo-card">
+          <div class="text-sm text-gray-500 font-bold">클리어 횟수</div>
+          <div id="stage-clear-count" class="text-2xl font-black text-duo-green mt-1">1회</div>
+        </div>
+      </div>
+
+      <div class="w-full max-w-xs flex flex-col gap-3">
+        <button id="complete-finish-btn" class="w-full py-4 text-xl rounded-2xl font-black tracking-wide text-white bg-duo-green shadow-duo-green duo-btn-press">
+          다음 모험으로 가기
+        </button>
+        <button id="complete-replay-btn" class="w-full py-3.5 text-lg rounded-2xl font-black tracking-wide text-duo-blue bg-white border-2 border-duo-blue shadow-duo-card duo-btn-press">
+          🎲 다른 문제로 한 번 더!
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 듀오링고 스타일 하단 정답/오답 판정 서랍 -->
+  <div id="result-sheet" class="fixed inset-x-0 bottom-0 z-50 transform translate-y-full transition-transform duration-200 ease-out border-t-2 p-5 sm:p-6">
+    <div class="max-w-md mx-auto flex flex-col gap-3">
+      <div class="flex items-center gap-3">
+        <div id="result-icon-box" class="w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black text-white shrink-0"></div>
+        <div>
+          <h3 id="result-title" class="text-2xl font-black leading-tight"></h3>
+          <p id="result-detail" class="text-sm font-bold opacity-90"></p>
+        </div>
+      </div>
+      <button id="sheet-next-btn" class="w-full mt-2 py-4 text-lg rounded-2xl font-black text-white duo-btn-press shadow-md">
+        계속하기
+      </button>
+    </div>
+  </div>
+
+  <!-- 하트 부족 충전 모달 -->
+  <div id="heart-modal" class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center border-4 border-duo-gray shadow-xl">
+      <div class="text-6xl mb-3">❤️</div>
+      <h3 class="text-2xl font-black text-duo-red mb-2">하트를 충전할까요?</h3>
+      <p class="text-gray-600 text-sm mb-6">언제든 하트를 가득 채우고 다시 신나게 공부할 수 있어요!</p>
+      <button id="refill-hearts-btn" class="w-full py-3.5 text-lg rounded-2xl font-black text-white bg-duo-red shadow-duo-red duo-btn-press mb-3">
+        하트 5개 가득 채우기 (무료)
+      </button>
+      <button id="close-heart-modal" class="w-full py-3 text-sm rounded-xl font-bold text-gray-500 hover:bg-gray-100">
+        닫기
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       1. 대규모 학습 데이터 은행 (총 200+ 항목)
+       ===================================================================== */
+    const ALPHABET_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const ALPHABET_PAIRS = ALPHABET_UPPER.map(u => ({ upper: u, lower: u.toLowerCase() }));
+
+    const PHONICS_POOL = [
+      { letter: "A", word: "Apple", ko: "사과", emoji: "🍎" },
+      { letter: "B", word: "Bear", ko: "곰", emoji: "🐻" },
+      { letter: "C", word: "Cat", ko: "고양이", emoji: "🐱" },
+      { letter: "D", word: "Dog", ko: "강아지", emoji: "🐶" },
+      { letter: "E", word: "Egg", ko: "달걀", emoji: "🥚" },
+      { letter: "F", word: "Fish", ko: "물고기", emoji: "🐟" },
+      { letter: "G", word: "Grape", ko: "포도", emoji: "🍇" },
+      { letter: "H", word: "Hat", ko: "모자", emoji: "🎩" },
+      { letter: "I", word: "Igloo", ko: "이글루", emoji: "🏠" },
+      { letter: "J", word: "Juice", ko: "주스", emoji: "🧃" },
+      { letter: "K", word: "King", ko: "왕", emoji: "👑" },
+      { letter: "L", word: "Lion", ko: "사자", emoji: "🦁" },
+      { letter: "M", word: "Monkey", ko: "원숭이", emoji: "🐵" },
+      { letter: "N", word: "Nose", ko: "코", emoji: "👃" },
+      { letter: "O", word: "Orange", ko: "오렌지", emoji: "🍊" },
+      { letter: "P", word: "Pig", ko: "돼지", emoji: "🐷" },
+      { letter: "Q", word: "Queen", ko: "여왕", emoji: "👸" },
+      { letter: "R", word: "Rabbit", ko: "토끼", emoji: "🐰" },
+      { letter: "S", word: "Sun", ko: "태양", emoji: "☀️" },
+      { letter: "T", word: "Tiger", ko: "호랑이", emoji: "🐯" },
+      { letter: "U", word: "Umbrella", ko: "우산", emoji: "☂️" },
+      { letter: "V", word: "Violin", ko: "바이올린", emoji: "🎻" },
+      { letter: "W", word: "Whale", ko: "고래", emoji: "🐳" },
+      { letter: "X", word: "Box", ko: "상자", emoji: "📦" },
+      { letter: "Y", word: "Yellow", ko: "노랑", emoji: "💛" },
+      { letter: "Z", word: "Zebra", ko: "얼룩말", emoji: "🦓" }
+    ];
+
+    const NUM_COLOR_POOL = [
+      { en: "One", ko: "숫자 1", emoji: "1️⃣" },
+      { en: "Two", ko: "숫자 2", emoji: "2️⃣" },
+      { en: "Three", ko: "숫자 3", emoji: "3️⃣" },
+      { en: "Four", ko: "숫자 4", emoji: "4️⃣" },
+      { en: "Five", ko: "숫자 5", emoji: "5️⃣" },
+      { en: "Six", ko: "숫자 6", emoji: "6️⃣" },
+      { en: "Seven", ko: "숫자 7", emoji: "7️⃣" },
+      { en: "Eight", ko: "숫자 8", emoji: "8️⃣" },
+      { en: "Nine", ko: "숫자 9", emoji: "9️⃣" },
+      { en: "Ten", ko: "숫자 10", emoji: "🔟" },
+      { en: "Red", ko: "빨간색", emoji: "🔴" },
+      { en: "Blue", ko: "파란색", emoji: "🔵" },
+      { en: "Yellow", ko: "노란색", emoji: "🟡" },
+      { en: "Green", ko: "초록색", emoji: "🟢" },
+      { en: "Orange", ko: "주황색", emoji: "🟠" },
+      { en: "Purple", ko: "보라색", emoji: "🟣" },
+      { en: "Pink", ko: "분홍색", emoji: "🩷" },
+      { en: "Black", ko: "검정색", emoji: "⚫" },
+      { en: "White", ko: "하얀색", emoji: "⚪" },
+      { en: "Brown", ko: "갈색", emoji: "🟤" }
+    ];
+
+    const ANIMAL_POOL = [
+      { en: "Dog", ko: "강아지", emoji: "🐶" },
+      { en: "Cat", ko: "고양이", emoji: "🐱" },
+      { en: "Pig", ko: "돼지", emoji: "🐷" },
+      { en: "Duck", ko: "오리", emoji: "🦆" },
+      { en: "Lion", ko: "사자", emoji: "🦁" },
+      { en: "Bear", ko: "곰", emoji: "🐻" },
+      { en: "Fish", ko: "물고기", emoji: "🐟" },
+      { en: "Rabbit", ko: "토끼", emoji: "🐰" },
+      { en: "Tiger", ko: "호랑이", emoji: "🐯" },
+      { en: "Elephant", ko: "코끼리", emoji: "🐘" },
+      { en: "Monkey", ko: "원숭이", emoji: "🐵" },
+      { en: "Frog", ko: "개구리", emoji: "🐸" },
+      { en: "Bird", ko: "새", emoji: "🐦" },
+      { en: "Cow", ko: "젖소", emoji: "🐮" },
+      { en: "Horse", ko: "말", emoji: "🐴" },
+      { en: "Sheep", ko: "양", emoji: "🐑" },
+      { en: "Fox", ko: "여우", emoji: "🦊" },
+      { en: "Penguin", ko: "펭귄", emoji: "🐧" },
+      { en: "Whale", ko: "고래", emoji: "🐳" },
+      { en: "Turtle", ko: "거북이", emoji: "🐢" }
+    ];
+
+    const FOOD_POOL = [
+      { en: "Apple", ko: "사과", emoji: "🍎" },
+      { en: "Banana", ko: "바나나", emoji: "🍌" },
+      { en: "Milk", ko: "우유", emoji: "🥛" },
+      { en: "Bread", ko: "빵", emoji: "🍞" },
+      { en: "Cake", ko: "케이크", emoji: "🎂" },
+      { en: "Egg", ko: "달걀", emoji: "🥚" },
+      { en: "Water", ko: "물", emoji: "💧" },
+      { en: "Juice", ko: "주스", emoji: "🧃" },
+      { en: "Pizza", ko: "피자", emoji: "🍕" },
+      { en: "Ice cream", ko: "아이스크림", emoji: "🍦" },
+      { en: "Grape", ko: "포도", emoji: "🍇" },
+      { en: "Strawberry", ko: "딸기", emoji: "🍓" },
+      { en: "Orange", ko: "오렌지", emoji: "🍊" },
+      { en: "Watermelon", ko: "수박", emoji: "🍉" },
+      { en: "Peach", ko: "복숭아", emoji: "🍑" },
+      { en: "Rice", ko: "밥", emoji: "🍚" },
+      { en: "Cookie", ko: "쿠키", emoji: "🍪" },
+      { en: "Cheese", ko: "치즈", emoji: "🧀" },
+      { en: "Tomato", ko: "토마토", emoji: "🍅" },
+      { en: "Carrot", ko: "당근", emoji: "🥕" }
+    ];
+
+    const SCHOOL_FAMILY_POOL = [
+      { en: "Mom", ko: "엄마", emoji: "👩" },
+      { en: "Dad", ko: "아빠", emoji: "👨" },
+      { en: "Baby", ko: "아기", emoji: "👶" },
+      { en: "Sister", ko: "언니/누나", emoji: "👧" },
+      { en: "Brother", ko: "오빠/형", emoji: "👦" },
+      { en: "Grandma", ko: "할머니", emoji: "👵" },
+      { en: "Grandpa", ko: "할아버지", emoji: "👴" },
+      { en: "Bag", ko: "가방", emoji: "🎒" },
+      { en: "Book", ko: "책", emoji: "📖" },
+      { en: "Pencil", ko: "연필", emoji: "✏️" },
+      { en: "Eraser", ko: "지우개", emoji: "🧼" },
+      { en: "Desk", ko: "책상", emoji: "🪑" },
+      { en: "School", ko: "학교", emoji: "🏫" },
+      { en: "Bus", ko: "버스", emoji: "🚌" },
+      { en: "Clock", ko: "시계", emoji: "⏰" },
+      { en: "Ball", ko: "공", emoji: "⚽" },
+      { en: "House", ko: "집", emoji: "🏡" },
+      { en: "Friend", ko: "친구", emoji: "🤝" }
+    ];
+
+    const ACTION_POOL = [
+      { en: "Run", ko: "달리다", emoji: "🏃" },
+      { en: "Jump", ko: "점프하다", emoji: "🦘" },
+      { en: "Walk", ko: "걷다", emoji: "🚶" },
+      { en: "Eat", ko: "먹다", emoji: "🍽️" },
+      { en: "Drink", ko: "마시다", emoji: "🥤" },
+      { en: "Sleep", ko: "자다", emoji: "💤" },
+      { en: "Sing", ko: "노래하다", emoji: "🎤" },
+      { en: "Dance", ko: "춤추다", emoji: "💃" },
+      { en: "Swim", ko: "수영하다", emoji: "🏊" },
+      { en: "Read", ko: "읽다", emoji: "📖" },
+      { en: "Write", ko: "쓰다", emoji: "✍️" },
+      { en: "Smile", ko: "웃다", emoji: "😊" },
+      { en: "Cry", ko: "울다", emoji: "😢" },
+      { en: "Wash", ko: "씻다", emoji: "🧼" },
+      { en: "Look", ko: "보다", emoji: "👀" },
+      { en: "Stop", ko: "멈추다", emoji: "🛑" }
+    ];
+
+    const CVC_WORDS_POOL = [
+      { word: "CAT", ko: "고양이", emoji: "🐱" },
+      { word: "DOG", ko: "강아지", emoji: "🐶" },
+      { word: "PIG", ko: "돼지", emoji: "🐷" },
+      { word: "SUN", ko: "태양", emoji: "☀️" },
+      { word: "BUS", ko: "버스", emoji: "🚌" },
+      { word: "HAT", ko: "모자", emoji: "🎩" },
+      { word: "CUP", ko: "컵", emoji: "🥤" },
+      { word: "BED", ko: "침대", emoji: "🛏️" },
+      { word: "FOX", ko: "여우", emoji: "🦊" },
+      { word: "BOX", ko: "상자", emoji: "📦" },
+      { word: "MAP", ko: "지도", emoji: "🗺️" },
+      { word: "PEN", ko: "볼펜", emoji: "🖊️" },
+      { word: "BAG", ko: "가방", emoji: "🎒" },
+      { word: "RED", ko: "빨강", emoji: "🔴" },
+      { word: "TEN", ko: "숫자 10", emoji: "🔟" },
+      { word: "SIX", ko: "숫자 6", emoji: "6️⃣" },
+      { word: "BOY", ko: "소년", emoji: "👦" },
+      { word: "MOM", ko: "엄마", emoji: "👩" },
+      { word: "DAD", ko: "아빠", emoji: "👨" },
+      { word: "ZOO", ko: "동물원", emoji: "🦁" }
+    ];
+
+    const SENTENCE_POOL = [
+      { ko: "나는 사과가 좋아 🍎", audio: "I like apples.", tokens: ["I", "like", "apples."] },
+      { ko: "좋은 아침이에요! ☀️", audio: "Good morning!", tokens: ["Good", "morning!"] },
+      { ko: "정말 고마워요! 😊", audio: "Thank you!", tokens: ["Thank", "you!"] },
+      { ko: "나는 행복해요 😄", audio: "I am happy.", tokens: ["I", "am", "happy."] },
+      { ko: "그것은 강아지야 🐶", audio: "It is a dog.", tokens: ["It", "is", "a", "dog."] },
+      { ko: "나는 엄마를 사랑해 ❤️", audio: "I love Mom.", tokens: ["I", "love", "Mom."] },
+      { ko: "나중에 또 만나! 👋", audio: "See you later!", tokens: ["See", "you", "later!"] },
+      { ko: "나는 수영할 수 있어 🏊", audio: "I can swim.", tokens: ["I", "can", "swim."] },
+      { ko: "나를 봐! 👀", audio: "Look at me!", tokens: ["Look", "at", "me!"] },
+      { ko: "그것은 빨간색이야 🔴", audio: "It is red.", tokens: ["It", "is", "red."] },
+      { ko: "우유를 마시고 싶어 🥛", audio: "I want milk.", tokens: ["I", "want", "milk."] },
+      { ko: "같이 놀자! ⚽", audio: "Let's play!", tokens: ["Let's", "play!"] },
+      { ko: "잘 자요, 좋은 꿈 꿔! 🌙", audio: "Good night!", tokens: ["Good", "night!"] },
+      { ko: "나는 8살이야 🎂", audio: "I am eight.", tokens: ["I", "am", "eight."] },
+      { ko: "나는 바나나가 좋아 🍌", audio: "I like bananas.", tokens: ["I", "like", "bananas."] },
+      { ko: "너는 최고야! 👍", audio: "You are great!", tokens: ["You", "are", "great!"] },
+      { ko: "그것은 고양이야 🐱", audio: "It is a cat.", tokens: ["It", "is", "a", "cat."] },
+      { ko: "안녕, 친구야! 🤝", audio: "Hello, my friend!", tokens: ["Hello,", "my", "friend!"] }
+    ];
+
+    /* 스테이지 메타데이터 정의 */
+    const STAGES_META = [
+      { id: 1, title: "알파벳 대문자 (A-Z)", icon: "🔤" },
+      { id: 2, title: "소문자 짝꿍 (a-z)", icon: "🧩" },
+      { id: 3, title: "첫소리 파닉스 (A-Z)", icon: "🍎" },
+      { id: 4, title: "숫자와 색깔 (20종)", icon: "🎨" },
+      { id: 5, title: "동물 친구들 (20종)", icon: "🐶" },
+      { id: 6, title: "맛있는 음식 (20종)", icon: "🍌" },
+      { id: 7, title: "가족과 학교 (18종)", icon: "✏️" },
+      { id: 8, title: "신나는 동작 (16종)", icon: "🏃" },
+      { id: 9, title: "3글자 단어 조립 (20종)", icon: "🚂" },
+      { id: 10, title: "첫 영어 문장 (18종)", icon: "💬" }
+    ];
+
+    /* =====================================================================
+       2. 피셔-예이츠(Fisher-Yates) 셔플 & 동적 문제 생성 엔진
+       ===================================================================== */
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function pickRandomItems(pool, count, excludeFn = null) {
+      const filtered = excludeFn ? pool.filter(excludeFn) : pool;
+      return shuffleArray(filtered).slice(0, count);
+    }
+
+    /* 스테이지 번호에 맞춰 매번 새로운 6문제 세트를 즉석 생성 */
+    function generateRandomQuestionsForStage(stageId) {
+      const QUESTIONS_PER_RUN = 6;
+      const questions = [];
+
+      if (stageId === 1) {
+        // 1단계: A~Z 26개 중 무작위 추출 (소리 듣고 찾기 4문제 + 알파벳 짝맞추기 2문제)
+        const targets = pickRandomItems(ALPHABET_UPPER, 4);
+        targets.forEach(letter => {
+          const distractors = pickRandomItems(ALPHABET_UPPER, 3, x => x !== letter);
+          const options = shuffleArray([letter, ...distractors]).map(ch => ({
+            id: ch, text: ch, audio: ch
+          }));
+          questions.push({
+            type: "select",
+            prompt: "소리를 잘 듣고 알맞은 대문자를 고르세요!",
+            audioText: letter,
+            badgeText: "🔊 다시 듣기",
+            options,
+            answer: letter
+          });
+        });
+        // 4쌍 동일 대문자 소리-글자 매칭 2문제
+        for (let i = 0; i < 2; i++) {
+          const four = pickRandomItems(ALPHABET_UPPER, 4);
+          questions.push({
+            type: "match",
+            prompt: "같은 알파벳 대문자끼리 짝을 지어보세요!",
+            pairs: four.map(ch => ({ id: ch, left: ch, right: ch, audio: ch }))
+          });
+        }
+      } 
+      else if (stageId === 2) {
+        // 2단계: A~Z 대소문자 매칭 (객관식 4문제 + 4쌍 대소문자 연결 2문제)
+        const targets = pickRandomItems(ALPHABET_PAIRS, 4);
+        targets.forEach(pair => {
+          const distractors = pickRandomItems(ALPHABET_PAIRS, 3, x => x.upper !== pair.upper);
+          const options = shuffleArray([pair, ...distractors]).map(p => ({
+            id: p.lower, text: p.lower, audio: p.lower
+          }));
+          questions.push({
+            type: "select",
+            prompt: `대문자 [ ${pair.upper} ]의 짝꿍 소문자는 무엇일까요?`,
+            audioText: pair.upper,
+            badgeText: `대문자 ${pair.upper}`,
+            options,
+            answer: pair.lower
+          });
+        });
+        for (let i = 0; i < 2; i++) {
+          const four = pickRandomItems(ALPHABET_PAIRS, 4);
+          questions.push({
+            type: "match",
+            prompt: "대문자와 짝꿍 소문자를 연결해 보세요!",
+            pairs: four.map(p => ({ id: p.upper, left: p.upper, right: p.lower, audio: p.upper }))
+          });
+        }
+      }
+      else if (stageId === 3) {
+        // 3단계: A~Z 26개 첫소리 파닉스
+        const targets = pickRandomItems(PHONICS_POOL, 4);
+        targets.forEach((item, idx) => {
+          const distractors = pickRandomItems(PHONICS_POOL, 3, x => x.letter !== item.letter);
+          if (idx % 2 === 0) {
+            // 첫 글자 보고 그림/단어 찾기
+            const options = shuffleArray([item, ...distractors]).map(x => ({
+              id: x.letter, text: `${x.emoji} ${x.ko}`, audio: x.word
+            }));
+            questions.push({
+              type: "select",
+              prompt: `'${item.letter}' 소리로 시작하는 그림을 찾아보세요!`,
+              audioText: `${item.letter} is for ${item.word}`,
+              badgeText: `${item.letter} ${item.letter.toLowerCase()}`,
+              options,
+              answer: item.letter
+            });
+          } else {
+            // 그림/단어 보고 첫 글자 찾기
+            const options = shuffleArray([item, ...distractors]).map(x => ({
+              id: x.letter, text: `${x.letter} ${x.letter.toLowerCase()}`, audio: x.letter
+            }));
+            questions.push({
+              type: "select",
+              prompt: `'${item.emoji} ${item.word}'는 어떤 알파벳으로 시작할까요?`,
+              audioText: item.word,
+              badgeText: `${item.emoji} ${item.word}`,
+              options,
+              answer: item.letter
+            });
+          }
+        });
+        for (let i = 0; i < 2; i++) {
+          const four = pickRandomItems(PHONICS_POOL, 4);
+          questions.push({
+            type: "match",
+            prompt: "첫 알파벳과 그림 단어를 연결하세요!",
+            pairs: four.map(x => ({ id: x.letter, left: `${x.letter} ${x.letter.toLowerCase()}`, right: `${x.emoji} ${x.word}`, audio: x.word }))
+          });
+        }
+      }
+      else if ([4, 5, 6, 7, 8].includes(stageId)) {
+        // 4~8단계: 어휘 테마 스테이지 (듣고 찾기 + 뜻 보고 영단어 찾기 + 4쌍 짝맞추기)
+        const poolMap = {
+          4: NUM_COLOR_POOL,
+          5: ANIMAL_POOL,
+          6: FOOD_POOL,
+          7: SCHOOL_FAMILY_POOL,
+          8: ACTION_POOL
+        };
+        const pool = poolMap[stageId];
+        const targets = pickRandomItems(pool, 4);
+
+        targets.forEach((item, idx) => {
+          const distractors = pickRandomItems(pool, 3, x => x.en !== item.en);
+          if (idx % 2 === 0) {
+            // 영어 소리/단어 -> 한글 뜻+그림 찾기
+            const options = shuffleArray([item, ...distractors]).map(x => ({
+              id: x.en, text: `${x.emoji} ${x.ko}`
+            }));
+            questions.push({
+              type: "select",
+              prompt: "원어민 발음을 듣고 알맞은 뜻을 고르세요!",
+              audioText: item.en,
+              badgeText: `🔊 ${item.en}`,
+              options,
+              answer: item.en
+            });
+          } else {
+            // 한글 뜻+그림 -> 영어 단어 고르기
+            const options = shuffleArray([item, ...distractors]).map(x => ({
+              id: x.en, text: x.en, audio: x.en
+            }));
+            questions.push({
+              type: "select",
+              prompt: `'[ ${item.emoji} ${item.ko} ]'를 영어로 어떻게 말할까요?`,
+              audioText: item.en,
+              badgeText: `${item.emoji} ${item.ko}`,
+              options,
+              answer: item.en
+            });
+          }
+        });
+
+        for (let i = 0; i < 2; i++) {
+          const four = pickRandomItems(pool, 4);
+          questions.push({
+            type: "match",
+            prompt: "영어 단어와 알맞은 그림·뜻을 연결하세요!",
+            pairs: four.map(x => ({ id: x.en, left: x.en, right: `${x.emoji} ${x.ko}`, audio: x.en }))
+          });
+        }
+      }
+      else if (stageId === 9) {
+        // 9단계: 3글자 단어 알파벳 블록 조립 (6문제 전부 무작위 추출)
+        const targets = pickRandomItems(CVC_WORDS_POOL, QUESTIONS_PER_RUN);
+        targets.forEach(item => {
+          const letters = item.word.split("");
+          let shuffled = shuffleArray(letters);
+          // 원래 단어와 순서가 똑같지 않도록 한 번 더 섞기
+          if (shuffled.join("") === item.word) {
+            shuffled = [letters[2], letters[0], letters[1]];
+          }
+          questions.push({
+            type: "assemble",
+            prompt: `알파벳 블록을 순서대로 눌러 영단어를 완성하세요!`,
+            audioText: item.word.toLowerCase(),
+            badgeText: `${item.emoji} ${item.ko}`,
+            tokens: shuffled,
+            answer: letters
+          });
+        });
+      }
+      else if (stageId === 10) {
+        // 10단계: 첫 영어 문장 블록 조립 (6문제 전부 무작위 추출)
+        const targets = pickRandomItems(SENTENCE_POOL, QUESTIONS_PER_RUN);
+        targets.forEach(item => {
+          let shuffled = shuffleArray(item.tokens);
+          if (shuffled.join(" ") === item.tokens.join(" ") && item.tokens.length > 1) {
+            shuffled = [...item.tokens].reverse();
+          }
+          questions.push({
+            type: "assemble",
+            prompt: "단어 블록을 차례대로 눌러 영어 문장을 만드세요!",
+            audioText: item.audio,
+            badgeText: item.ko,
+            tokens: shuffled,
+            answer: item.tokens
+          });
+        });
+      }
+
+      // 최종 6문제 순서를 한 번 더 무작위로 섞어서 반환
+      return shuffleArray(questions);
+    }
+
+    /* =====================================================================
+       3. Web Audio API 효과음 및 원어민 음성(TTS) 엔진
+       ===================================================================== */
+    class SoundEngine {
+      constructor() { this.ctx = null; }
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      playCorrect() {
+        this.init();
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.075);
+          gain.gain.setValueAtTime(0.18, now + idx * 0.075);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.075 + 0.22);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.075); osc.stop(now + idx * 0.075 + 0.22);
+        });
+      }
+      playWrong() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(175, now);
+        osc.frequency.linearRampToValueAtTime(110, now + 0.26);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.26);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.26);
+      }
+      playPop() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(840, now + 0.055);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.055);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.055);
+      }
+    }
+    const sound = new SoundEngine();
+
+    let currentSpeechRate = 0.75;
+    function speakText(text) {
+      if (!('speechSynthesis' in window) || !text) return;
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'en-US';
+      utter.rate = currentSpeechRate;
+      utter.pitch = 1.1;
+      window.speechSynthesis.speak(utter);
+    }
+
+    /* =====================================================================
+       4. 상태 저장소 및 진행 관리
+       ===================================================================== */
+    const AppState = {
+      user: {
+        hearts: 5,
+        gems: 50,
+        streak: 1,
+        unlockedStage: 1,
+        clearCounts: {}
+      },
+      currentStageId: 1,
+      activeQuestions: [],
+      currentQuestionIndex: 0,
+      selectedAnswer: null,
+      assembledTokens: [],
+      matchState: { selectedLeft: null, selectedRight: null, matchedIds: new Set() },
+
+      init() {
+        const saved = localStorage.getItem('kidslingo_save_v2');
+        if (saved) {
+          try { this.user = { ...this.user, ...JSON.parse(saved) }; } catch (e) {}
+        }
+        this.save();
+      },
+      save() {
+        localStorage.setItem('kidslingo_save_v2', JSON.stringify(this.user));
+        document.getElementById('heart-count').textContent = this.user.hearts;
+        document.getElementById('gem-count').textContent = this.user.gems;
+        document.getElementById('streak-count').textContent = this.user.streak;
+      }
+    };
+
+    /* =====================================================================
+       5. 징검다리 학습 맵 렌더링
+       ===================================================================== */
+    function renderMap() {
+      const container = document.getElementById('path-nodes-container');
+      container.innerHTML = '';
+
+      STAGES_META.forEach((stage, idx) => {
+        const stageNum = stage.id;
+        const isUnlocked = stageNum <= AppState.user.unlockedStage;
+        const clearCount = AppState.user.clearCounts[stageNum] || 0;
+        const isCompleted = clearCount > 0;
+        const isCurrent = stageNum === AppState.user.unlockedStage;
+
+        const offsets = [0, 42, 0, -42];
+        const offsetX = offsets[idx % offsets.length];
+
+        const wrapper = document.createElement('div');
+        wrapper.className = "flex flex-col items-center relative transition-transform duration-200";
+        wrapper.style.transform = `translateX(${offsetX}px)`;
+
+        if (isCurrent && !isCompleted) {
+          const badge = document.createElement('div');
+          badge.className = "floating-badge mb-2 bg-white text-duo-green font-black text-xs px-3 py-1.5 rounded-2xl shadow-duo-card border-2 border-duo-green flex items-center gap-1";
+          badge.innerHTML = `<span>START</span> <span>👇</span>`;
+          wrapper.appendChild(badge);
+        }
+
+        const btn = document.createElement('button');
+        btn.disabled = !isUnlocked;
+
+        let themeClass = "bg-duo-gray shadow-duo-gray text-gray-400 cursor-not-allowed";
+        if (isUnlocked) {
+          themeClass = isCompleted
+            ? "bg-duo-yellow shadow-duo-yellow text-white duo-btn-press"
+            : "bg-duo-green shadow-duo-green text-white duo-btn-press";
+        }
+
+        btn.className = `w-20 h-20 rounded-full flex flex-col items-center justify-center text-3xl font-black relative ${themeClass}`;
+        btn.innerHTML = `
+          <span>${stage.icon}</span>
+          ${isCompleted ? `<span class="text-xs text-amber-950 bg-amber-200 px-2 py-0.5 rounded-full absolute -top-1 -right-2 font-black border border-amber-400">★ ${clearCount}</span>` : ''}
+        `;
+
+        btn.addEventListener('click', () => {
+          sound.playPop();
+          startStage(stageNum);
+        });
+
+        const label = document.createElement('span');
+        label.className = `mt-1.5 text-xs font-black ${isUnlocked ? 'text-duo-text' : 'text-gray-400'}`;
+        label.textContent = `${stageNum}단계: ${stage.title}`;
+
+        wrapper.appendChild(btn);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
+      });
+    }
+
+    /* =====================================================================
+       6. 스테이지 시작 및 문제 출제 로직
+       ===================================================================== */
+    function startStage(stageId) {
+      if (AppState.user.hearts <= 0) {
+        document.getElementById('heart-modal').classList.remove('hidden');
+        return;
+      }
+
+      AppState.currentStageId = stageId;
+      AppState.activeQuestions = generateRandomQuestionsForStage(stageId);
+      AppState.currentQuestionIndex = 0;
+
+      document.getElementById('map-view').classList.add('hidden');
+      document.getElementById('complete-view').classList.add('hidden');
+      document.getElementById('quiz-view').classList.remove('hidden');
+      document.getElementById('quiz-view').classList.add('flex');
+
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const totalQ = AppState.activeQuestions.length;
+      const q = AppState.activeQuestions[AppState.currentQuestionIndex];
+
+      // 진행도 표시 갱신
+      const progressPercent = (AppState.currentQuestionIndex / totalQ) * 100;
+      document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+      document.getElementById('question-counter').textContent = `${AppState.currentQuestionIndex + 1} / ${totalQ}`;
+
+      AppState.selectedAnswer = null;
+      AppState.assembledTokens = [];
+      AppState.matchState = { selectedLeft: null, selectedRight: null, matchedIds: new Set() };
+
+      const bottomControl = document.getElementById('quiz-bottom-control');
+      const contentArea = document.getElementById('quiz-content-area');
+      contentArea.innerHTML = '';
+
+      // 1) 객관식 선택형
+      if (q.type === 'select') {
+        bottomControl.classList.remove('hidden');
+        updateSubmitButton(false);
+
+        const promptBox = document.createElement('div');
+        promptBox.className = "text-center mb-5";
+        promptBox.innerHTML = `
+          <h3 class="text-xl sm:text-2xl font-black text-duo-text mb-3">${q.prompt}</h3>
+          <button id="listen-prompt-btn" class="inline-flex items-center gap-2.5 bg-white border-2 border-duo-blue px-5 py-3 rounded-2xl shadow-duo-card duo-btn-press">
+            <span class="text-2xl">🔊</span>
+            <span class="text-xl font-black text-duo-blue">${q.badgeText}</span>
+          </button>
+        `;
+        contentArea.appendChild(promptBox);
+
+        setTimeout(() => speakText(q.audioText), 200);
+        promptBox.querySelector('#listen-prompt-btn').addEventListener('click', () => {
+          sound.playPop();
+          speakText(q.audioText);
+        });
+
+        const grid = document.createElement('div');
+        grid.className = "grid grid-cols-2 gap-3 w-full";
+
+        q.options.forEach(opt => {
+          const optBtn = document.createElement('button');
+          optBtn.className = "option-card bg-white border-2 border-duo-gray rounded-2xl p-4 sm:p-5 text-center text-xl sm:text-2xl font-black text-duo-text shadow-duo-card duo-btn-press hover:border-duo-blue transition-colors flex items-center justify-center";
+          optBtn.textContent = opt.text;
+          optBtn.addEventListener('click', () => {
+            sound.playPop();
+            if (opt.audio) speakText(opt.audio);
+            document.querySelectorAll('.option-card').forEach(b => {
+              b.classList.remove('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+            });
+            optBtn.classList.add('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+            AppState.selectedAnswer = opt.id;
+            updateSubmitButton(true);
+          });
+          grid.appendChild(optBtn);
+        });
+        contentArea.appendChild(grid);
+      }
+
+      // 2) 4쌍 짝맞추기형
+      else if (q.type === 'match') {
+        bottomControl.classList.add('hidden'); // 4쌍 모두 맞추면 자동 통과
+
+        const header = document.createElement('div');
+        header.className = "text-center mb-4";
+        header.innerHTML = `<h3 class="text-xl sm:text-2xl font-black text-duo-text">${q.prompt}</h3>`;
+        contentArea.appendChild(header);
+
+        const leftItems = shuffleArray(q.pairs);
+        const rightItems = shuffleArray(q.pairs);
+
+        const board = document.createElement('div');
+        board.className = "grid grid-cols-2 gap-3 sm:gap-4 w-full";
+
+        const leftCol = document.createElement('div');
+        leftCol.className = "flex flex-col gap-3";
+        const rightCol = document.createElement('div');
+        rightCol.className = "flex flex-col gap-3";
+
+        leftItems.forEach(item => {
+          const btn = document.createElement('button');
+          btn.className = "match-left-btn bg-white border-2 border-duo-gray rounded-2xl py-4 px-3 text-lg sm:text-xl font-black text-duo-text shadow-duo-card duo-btn-press";
+          btn.textContent = item.left;
+          btn.dataset.id = item.id;
+          btn.addEventListener('click', () => handleMatchClick('left', item.id, item.audio, btn));
+          leftCol.appendChild(btn);
+        });
+
+        rightItems.forEach(item => {
+          const btn = document.createElement('button');
+          btn.className = "match-right-btn bg-white border-2 border-duo-gray rounded-2xl py-4 px-3 text-lg sm:text-xl font-black text-duo-text shadow-duo-card duo-btn-press";
+          btn.textContent = item.right;
+          btn.dataset.id = item.id;
+          btn.addEventListener('click', () => handleMatchClick('right', item.id, null, btn));
+          rightCol.appendChild(btn);
+        });
+
+        board.appendChild(leftCol);
+        board.appendChild(rightCol);
+        contentArea.appendChild(board);
+      }
+
+      // 3) 알파벳·문장 블록 조립형
+      else if (q.type === 'assemble') {
+        bottomControl.classList.remove('hidden');
+        updateSubmitButton(false);
+
+        const promptBox = document.createElement('div');
+        promptBox.className = "text-center mb-4";
+        promptBox.innerHTML = `
+          <h3 class="text-xl sm:text-2xl font-black text-duo-text mb-3">${q.prompt}</h3>
+          <button id="listen-prompt-btn" class="inline-flex items-center gap-2 bg-white border-2 border-duo-blue px-5 py-2.5 rounded-2xl shadow-duo-card duo-btn-press">
+            <span class="text-2xl">🔊</span>
+            <span class="text-xl font-black text-duo-blue">${q.badgeText}</span>
+          </button>
+        `;
+        contentArea.appendChild(promptBox);
+
+        setTimeout(() => speakText(q.audioText), 200);
+        promptBox.querySelector('#listen-prompt-btn').addEventListener('click', () => {
+          sound.playPop();
+          speakText(q.audioText);
+        });
+
+        const slotBox = document.createElement('div');
+        slotBox.className = "min-h-[68px] bg-white border-2 border-dashed border-gray-300 rounded-2xl mb-6 flex flex-wrap gap-2 items-center justify-center p-3";
+        slotBox.id = "assembled-slot";
+        contentArea.appendChild(slotBox);
+
+        const poolBox = document.createElement('div');
+        poolBox.className = "flex flex-wrap gap-2.5 items-center justify-center";
+        poolBox.id = "token-pool";
+
+        q.tokens.forEach((tok, tokIdx) => {
+          const tokBtn = document.createElement('button');
+          tokBtn.className = "token-chip bg-white border-2 border-duo-gray rounded-2xl px-4 py-3 text-xl font-black text-duo-text shadow-duo-card duo-btn-press";
+          tokBtn.textContent = tok;
+          tokBtn.dataset.index = tokIdx;
+
+          tokBtn.addEventListener('click', () => {
+            sound.playPop();
+            speakText(tok.replace(/[.!,]/g, ''));
+            tokBtn.classList.add('opacity-25', 'pointer-events-none');
+            AppState.assembledTokens.push({ text: tok, originId: tokIdx });
+            renderAssembledTokens();
+          });
+          poolBox.appendChild(tokBtn);
+        });
+        contentArea.appendChild(poolBox);
+      }
+    }
+
+    /* 짝맞추기 선택 판정 */
+    function handleMatchClick(side, id, audio, btnEl) {
+      if (AppState.matchState.matchedIds.has(id)) return;
+      sound.playPop();
+      if (audio) speakText(audio);
+
+      if (side === 'left') {
+        document.querySelectorAll('.match-left-btn').forEach(b => {
+          if (!AppState.matchState.matchedIds.has(b.dataset.id)) {
+            b.classList.remove('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+          }
+        });
+        btnEl.classList.add('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+        AppState.matchState.selectedLeft = { id, el: btnEl };
+      } else {
+        document.querySelectorAll('.match-right-btn').forEach(b => {
+          if (!AppState.matchState.matchedIds.has(b.dataset.id)) {
+            b.classList.remove('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+          }
+        });
+        btnEl.classList.add('border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+        AppState.matchState.selectedRight = { id, el: btnEl };
+      }
+
+      const { selectedLeft, selectedRight } = AppState.matchState;
+      if (selectedLeft && selectedRight) {
+        if (selectedLeft.id === selectedRight.id) {
+          // 짝 성공
+          AppState.matchState.matchedIds.add(selectedLeft.id);
+          [selectedLeft.el, selectedRight.el].forEach(el => {
+            el.disabled = true;
+            el.className = "bg-emerald-50 border-2 border-duo-green rounded-2xl py-4 px-3 text-lg sm:text-xl font-black text-duo-green opacity-60 transition-all";
+          });
+          AppState.matchState.selectedLeft = null;
+          AppState.matchState.selectedRight = null;
+
+          // 4쌍 모두 맞췄을 때
+          if (AppState.matchState.matchedIds.size === 4) {
+            setTimeout(() => showResultSheet(true, { answer: "4쌍 모두 연결 성공!" }), 250);
+          }
+        } else {
+          // 짝 불일치 시 흔들림 피드백
+          sound.playWrong();
+          [selectedLeft.el, selectedRight.el].forEach(el => {
+            el.classList.add('shake-wrong', 'border-duo-red', 'bg-rose-50', 'text-duo-red');
+          });
+          const lEl = selectedLeft.el;
+          const rEl = selectedRight.el;
+          AppState.matchState.selectedLeft = null;
+          AppState.matchState.selectedRight = null;
+
+          setTimeout(() => {
+            [lEl, rEl].forEach(el => {
+              el.classList.remove('shake-wrong', 'border-duo-red', 'bg-rose-50', 'text-duo-red', 'border-duo-blue', 'bg-sky-50', 'text-duo-blue');
+            });
+          }, 400);
+        }
+      }
+    }
+
+    function renderAssembledTokens() {
+      const slotBox = document.getElementById('assembled-slot');
+      slotBox.innerHTML = '';
+
+      AppState.assembledTokens.forEach((item, slotIdx) => {
+        const chip = document.createElement('button');
+        chip.className = "bg-duo-blue text-white font-black text-xl px-4 py-2.5 rounded-2xl shadow-duo-blue duo-btn-press";
+        chip.textContent = item.text;
+        chip.addEventListener('click', () => {
+          sound.playPop();
+          AppState.assembledTokens.splice(slotIdx, 1);
+          const originBtn = document.querySelector(`.token-chip[data-index="${item.originId}"]`);
+          if (originBtn) originBtn.classList.remove('opacity-25', 'pointer-events-none');
+          renderAssembledTokens();
+        });
+        slotBox.appendChild(chip);
+      });
+
+      const q = AppState.activeQuestions[AppState.currentQuestionIndex];
+      updateSubmitButton(AppState.assembledTokens.length === q.answer.length);
+    }
+
+    function updateSubmitButton(active) {
+      const btn = document.getElementById('submit-answer-btn');
+      if (active) {
+        btn.disabled = false;
+        btn.className = "w-full py-4 text-xl rounded-2xl font-black tracking-wider text-white bg-duo-green shadow-duo-green duo-btn-press cursor-pointer uppercase";
+      } else {
+        btn.disabled = true;
+        btn.className = "w-full py-4 text-xl rounded-2xl font-black tracking-wider bg-duo-gray text-gray-400 cursor-not-allowed uppercase";
+      }
+    }
+
+    /* =====================================================================
+       7. 정답 판정 및 듀오링고 하단 바텀시트
+       ===================================================================== */
+    document.getElementById('submit-answer-btn').addEventListener('click', () => {
+      const q = AppState.activeQuestions[AppState.currentQuestionIndex];
+      let isCorrect = false;
+
+      if (q.type === 'select') {
+        isCorrect = (AppState.selectedAnswer === q.answer);
+      } else if (q.type === 'assemble') {
+        const joiner = AppState.currentStageId === 9 ? '' : ' ';
+        isCorrect = (AppState.assembledTokens.map(t => t.text).join(joiner) === q.answer.join(joiner));
+      }
+      showResultSheet(isCorrect, q);
+    });
+
+    function showResultSheet(isCorrect, question) {
+      const sheet = document.getElementById('result-sheet');
+      const iconBox = document.getElementById('result-icon-box');
+      const title = document.getElementById('result-title');
+      const detail = document.getElementById('result-detail');
+      const nextBtn = document.getElementById('sheet-next-btn');
+
+      if (isCorrect) {
+        sound.playCorrect();
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 40, spread: 55, origin: { y: 0.85 } });
+        }
+        sheet.className = "fixed inset-x-0 bottom-0 z-50 transform translate-y-0 transition-transform duration-200 border-t-2 border-emerald-300 bg-emerald-50 p-5 sm:p-6 text-emerald-900";
+        iconBox.className = "w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black text-white shrink-0 bg-duo-green";
+        iconBox.innerHTML = "✓";
+        title.textContent = "정답입니다! 참 잘했어요!";
+        title.className = "text-2xl font-black leading-tight text-duo-green";
+        detail.textContent = "다음 문제로 넘어가 볼까요?";
+        nextBtn.className = "w-full mt-2 py-4 text-lg rounded-2xl font-black text-white bg-duo-green shadow-duo-green duo-btn-press";
+      } else {
+        sound.playWrong();
+        AppState.user.hearts = Math.max(0, AppState.user.hearts - 1);
+        AppState.save();
+
+        sheet.className = "fixed inset-x-0 bottom-0 z-50 transform translate-y-0 transition-transform duration-200 border-t-2 border-rose-300 bg-rose-50 p-5 sm:p-6 text-rose-900";
+        iconBox.className = "w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black text-white shrink-0 bg-duo-red";
+        iconBox.innerHTML = "✕";
+        title.textContent = "아쉬워요! 정답을 확인해 봐요";
+        title.className = "text-2xl font-black leading-tight text-duo-red";
+        
+        const joiner = AppState.currentStageId === 9 ? '' : ' ';
+        const ansLabel = Array.isArray(question.answer) ? question.answer.join(joiner) : question.answer;
+        detail.textContent = `정답: ${ansLabel}`;
+        nextBtn.className = "w-full mt-2 py-4 text-lg rounded-2xl font-black text-white bg-duo-red shadow-duo-red duo-btn-press";
+      }
+
+      nextBtn.onclick = () => {
+        sheet.classList.add('translate-y-full');
+        if (AppState.user.hearts <= 0) {
+          document.getElementById('heart-modal').classList.remove('hidden');
+          return;
+        }
+        if (AppState.currentQuestionIndex + 1 < AppState.activeQuestions.length) {
+          AppState.currentQuestionIndex++;
+          loadQuestion();
+        } else {
+          finishStage();
+        }
+      };
+    }
+
+    function finishStage() {
+      const stageId = AppState.currentStageId;
+      AppState.user.clearCounts[stageId] = (AppState.user.clearCounts[stageId] || 0) + 1;
+      if (stageId === AppState.user.unlockedStage && stageId < STAGES_META.length) {
+        AppState.user.unlockedStage = stageId + 1;
+      }
+      AppState.user.gems += 15;
+      AppState.save();
+
+      document.getElementById('stage-clear-count').textContent = `${AppState.user.clearCounts[stageId]}회 달성`;
+      document.getElementById('quiz-view').classList.add('hidden');
+      document.getElementById('complete-view').classList.remove('hidden');
+      document.getElementById('complete-view').classList.add('flex');
+
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
+      }
+    }
+
+    /* =====================================================================
+       8. 버튼 이벤트 연결
+       ===================================================================== */
+    document.getElementById('complete-finish-btn').addEventListener('click', () => {
+      document.getElementById('complete-view').classList.add('hidden');
+      document.getElementById('map-view').classList.remove('hidden');
+      renderMap();
+    });
+
+    document.getElementById('complete-replay-btn').addEventListener('click', () => {
+      sound.playPop();
+      startStage(AppState.currentStageId);
+    });
+
+    document.getElementById('header-home-btn').addEventListener('click', () => {
+      document.getElementById('result-sheet').classList.add('translate-y-full');
+      document.getElementById('quiz-view').classList.add('hidden');
+      document.getElementById('complete-view').classList.add('hidden');
+      document.getElementById('map-view').classList.remove('hidden');
+      renderMap();
+    });
+
+    document.getElementById('quiz-exit-btn').addEventListener('click', () => {
+      document.getElementById('result-sheet').classList.add('translate-y-full');
+      document.getElementById('quiz-view').classList.add('hidden');
+      document.getElementById('map-view').classList.remove('hidden');
+      renderMap();
+    });
+
+    document.getElementById('tts-speed-toggle').addEventListener('click', () => {
+      sound.playPop();
+      const speedText = document.getElementById('speed-text');
+      if (currentSpeechRate === 0.75) {
+        currentSpeechRate = 1.0;
+        speedText.textContent = "1.0x";
+      } else {
+        currentSpeechRate = 0.75;
+        speedText.textContent = "0.75x";
+      }
+    });
+
+    document.getElementById('heart-pill').addEventListener('click', () => {
+      document.getElementById('heart-modal').classList.remove('hidden');
+    });
+    document.getElementById('close-heart-modal').addEventListener('click', () => {
+      document.getElementById('heart-modal').classList.add('hidden');
+    });
+    document.getElementById('refill-hearts-btn').addEventListener('click', () => {
+      sound.playCorrect();
+      AppState.user.hearts = 5;
+      AppState.save();
+      document.getElementById('heart-modal').classList.add('hidden');
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      AppState.init();
+      renderMap();
+    });
+  </script>
+</body>
+</html>
